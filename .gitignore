@@ -1,0 +1,5 @@
+.DS_Store
+.env*
+.vscode/
+awslambda-psycopg2/
+*.zip
