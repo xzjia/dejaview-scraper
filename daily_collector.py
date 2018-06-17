@@ -98,7 +98,11 @@ class NYT(object):
         self.api_key_pool = os.environ['NYT_API_KEYS'].split('_')
         self.error_count = 0
         self.target_date = target_date
-        self.events = self.process_one_day(target_date)
+        current_date = target_date
+        self.events = []
+        while current_date <= date.today():
+            self.events.extend(self.process_one_day(current_date))
+            current_date = current_date + timedelta(days=1)
 
     def already_same(self, existing_event, row):
         return existing_event['link'] == row['link'] and existing_event['image_link'] == row['image_link'] and existing_event['media_link'] == row['media_link'] and existing_event['text'] == row['text']
