@@ -1,3 +1,4 @@
+# This file is from https://github.com/browniebroke/hello-lambda
 # Update this to give whichever name you want. This may be set on the command line:
 # > make build OUT_FILE=./outfile.zip
 OUT_FILE?=./deliverable.zip
