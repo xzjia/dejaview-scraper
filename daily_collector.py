@@ -8,6 +8,7 @@ import boto3
 from Database import Database
 from NYT import NYT
 from Billboard import Billboard
+from Wikipedia import Wikipedia
 
 h = logging.StreamHandler(sys.stdout)
 h.setFormatter(logging.Formatter(
@@ -23,18 +24,21 @@ def lambda_handler(event, context):
     s3_bucket = boto3.resource("s3").Bucket(os.environ['BUCKET_NAME'])
     db = Database()
 
-    logger.info('Collecting NYT articles...')
-    nyt = NYT()
-    nyt.store_s3(s3_bucket)
-    nyt.store_rds(db)
-    logger.info('{} NYT events handled successfully'.format(len(nyt.events)))
+    # logger.info('Collecting NYT articles...')
+    # nyt = NYT()
+    # nyt.store_s3(s3_bucket)
+    # nyt.store_rds(db)
+    # logger.info('{} NYT events handled successfully'.format(len(nyt.events)))
 
-    logger.info('Collecting Billboard articles...')
-    billboard = Billboard()
-    billboard.store_s3(s3_bucket)
-    billboard.store_rds(db)
-    logger.info('{} Billboard events handled successfully'.format(
-        len(billboard.events)))
+    # logger.info('Collecting Billboard articles...')
+    # billboard = Billboard()
+    # billboard.store_s3(s3_bucket)
+    # billboard.store_rds(db)
+    # logger.info('{} Billboard events handled successfully'.format(
+    #     len(billboard.events)))
+
+    logger.info('Collecting Wikipedia articles...')
+    wikipedia = Wikipedia()
 
 
 if __name__ == '__main__':
