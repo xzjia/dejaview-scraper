@@ -7,7 +7,7 @@ name = "pypi"
 requests = "*"
 "boto3" = "*"
 sqlalchemy = "*"
-"psycopg2" = "*"
+"psycopg2-binary" = "*"
 
 [dev-packages]
 
