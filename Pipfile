@@ -9,6 +9,7 @@ requests = "*"
 sqlalchemy = "*"
 "psycopg2-binary" = "*"
 "billboard.py" = "*"
+requests-html = "*"
 
 [dev-packages]
 "autopep8" = "*"
