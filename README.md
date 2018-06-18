@@ -39,11 +39,9 @@ pipenv run python daily_collector.py
 
 ```py
 class XXX(object):
-    def __init__(self, target_date, s3_bucket):
+    def __init__(self):
         self.label_name = 'XXX'
-        self.target_date = target_date
-        self.s3_bucket = s3_bucket
-
+        self.target_date = # Assign this value to something that make sense
         self.logger = logging.getLogger(
             'daily_collector.{}'.format(self.__class__.__name__))
 
@@ -72,10 +70,10 @@ class XXX(object):
                 self.logger.error('{}') # Some information that saying which part went wrong.
         return result
 
-    def store_s3(self):
+    def store_s3(self, s3_bucket):
         # Pick the right name for json files.
         if len(self.events) > 0:
-            self.s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
+            s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
                                                           self.format_date(self.target_date, with_hyphen=True))).put(Body=json.dumps(self.events, indent=2))
             self.logger.info('Successfully stored {} {} events into S3'.format(
                 self.format_date(self.target_date), len(self.events)))

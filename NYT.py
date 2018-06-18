@@ -10,9 +10,8 @@ NYT_ARTICLE_SEARCH_EP = 'https://api.nytimes.com/svc/search/v2/articlesearch.jso
 
 
 class NYT(object):
-    def __init__(self, target_date, s3_bucket):
+    def __init__(self):
         self.label_name = 'New-York-Times'
-        self.s3_bucket = s3_bucket
         self.logger = logging.getLogger(
             'daily_collector.{}'.format(self.__class__.__name__))
 
@@ -20,15 +19,18 @@ class NYT(object):
         self.api_key_pool = os.environ['NYT_API_KEYS'].split('_')
         self.error_count = 0
 
-        self.target_date = target_date
-        cursor_date = target_date
+        self.target_date = date.today() - timedelta(days=2)
+        cursor_date = self.target_date
         self.events = []
         while cursor_date <= date.today():
             self.events.extend(self.process_one_day(cursor_date))
             cursor_date = cursor_date + timedelta(days=1)
 
     def already_same(self, existing_event, row):
-        return existing_event['link'] == row['link'] and existing_event['image_link'] == row['image_link'] and existing_event['media_link'] == row['media_link'] and existing_event['text'] == row['text']
+        return existing_event['link'] == row['link'] \
+            and existing_event['image_link'] == row['image_link'] \
+            and existing_event['media_link'] == row['media_link'] \
+            and existing_event['text'] == row['text']
 
     def format_date(self, date_object, with_hyphen=False):
         if with_hyphen:
@@ -65,10 +67,10 @@ class NYT(object):
                 seen_article.add(title)
         return result
 
-    def store_s3(self):
+    def store_s3(self, s3_bucket):
         if len(self.events) > 0:
-            self.s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-                                                          self.format_date(self.target_date, with_hyphen=True))).put(Body=json.dumps(self.events, indent=2))
+            s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
+                                                     self.format_date(self.target_date, with_hyphen=True))).put(Body=json.dumps(self.events, indent=2))
             self.logger.info('Successfully stored {} {} events into S3'.format(
                 self.format_date(self.target_date), len(self.events)))
         else:

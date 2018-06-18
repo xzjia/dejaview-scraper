@@ -19,15 +19,14 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    s3 = boto3.resource("s3").Bucket(os.environ['BUCKET_NAME'])
+    s3_bucket = boto3.resource("s3").Bucket(os.environ['BUCKET_NAME'])
     db = Database()
 
     logger.info('Collecting NYT articles...')
-    target_date = date.today() - timedelta(days=2)
-    nyt = NYT(target_date, s3)
-    nyt.store_s3()
+    nyt = NYT()
+    nyt.store_s3(s3_bucket)
     nyt.store_rds(db)
-    return '{} NYT events handled successfully'.format(len(nyt.events))
+    logger.info('{} NYT events handled successfully'.format(len(nyt.events)))
 
 
 if __name__ == '__main__':
