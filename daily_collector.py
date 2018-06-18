@@ -7,6 +7,7 @@ import boto3
 
 from Database import Database
 from NYT import NYT
+from Billboard import Billboard
 
 h = logging.StreamHandler(sys.stdout)
 h.setFormatter(logging.Formatter(
@@ -27,6 +28,13 @@ def lambda_handler(event, context):
     nyt.store_s3(s3_bucket)
     nyt.store_rds(db)
     logger.info('{} NYT events handled successfully'.format(len(nyt.events)))
+
+    logger.info('Collecting Billboard articles...')
+    billboard = Billboard()
+    billboard.store_s3(s3_bucket)
+    billboard.store_rds(db)
+    logger.info('{} Billboard events handled successfully'.format(
+        len(billboard.events)))
 
 
 if __name__ == '__main__':
