@@ -8,6 +8,7 @@ requests = "*"
 "boto3" = "*"
 sqlalchemy = "*"
 "psycopg2-binary" = "*"
+"billboard.py" = "*"
 
 [dev-packages]
 "autopep8" = "*"
