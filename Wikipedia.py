@@ -81,7 +81,8 @@ class OneWikiDay(object):
             desc = splitted[1].strip()
             string_date = year + '-' + date_without_year
             try:
-                result['date'] = datetime.strptime(string_date, '%Y-%m-%d')
+                date_obj = datetime.strptime(string_date, '%Y-%m-%d')
+                result['date'] = date_obj.strftime('%Y-%m-%d')
             except:
                 self.logger.debug(
                     "Error when parsing {}, maybe because it's too old".format(string_date))
@@ -103,13 +104,15 @@ class Wikipedia(object):
         self.all_links = self.get_date_links()
         self.data = {}
         # for single_link in self.all_links:
-        for single_link in random.sample(self.all_links, 5):
+        for single_link in random.sample(self.all_links, 3):
             w = OneWikiDay(single_link)
             self.data[w.date_without_year] = w.data
         self.events = [event for one_day in self.data.values()
                        for event in one_day]
         self.logger.info(
             'Collected {} Wikipedia entries in total'.format(len(self.events)))
+        with open("Temp.json", 'w') as w:
+            json.dump(self.events, w, indent=2)
 
     def get_date_links(self):
         session = HTMLSession()

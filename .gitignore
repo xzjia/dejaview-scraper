@@ -3,3 +3,4 @@
 .vscode/
 awslambda-psycopg2/
 *.zip
+*.json
