@@ -20,8 +20,14 @@ class Movies(object):
         self.label_name = 'Movies'
         # self.logger = logging.getLogger(
         #     'daily_collector.{}'.format(self.__class__.__name__))
-        self.events = [self.chart.movies[0]]
+        self.events = self.get_top_movie()
         self.multimedia_link_memo = {}
+
+    def get_top_movie(self):
+        if len(self.chart.movies) < 1:
+            return []
+        else:
+            return [self.chart.movies[0]]
 
     def get_query(self, title):
         raw = title + ' ' + str(self.target_date.year)
@@ -69,8 +75,11 @@ class Movies(object):
 def main():
     # Some unit tests
     m = Movies()
-    print(m.events[0]["movie"])
-    print(m.map_json_array_to_rows(m.events, 5))
+    if m.events == []:
+        print("None")
+    else:
+        print(m.events[0]["movie"])
+        print(m.map_json_array_to_rows(m.events, 5))
 
 
 if __name__ == '__main__':

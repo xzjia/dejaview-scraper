@@ -13,11 +13,11 @@ class MovieChart(object):
         return movies
 
     def get_movies_for_day(self, date):
-        chart = self.get_weekly_chart(date.year, date.month, date.day-4)
+        chart = self.get_weekly_chart(date.year, date.month, date.day)
         if len(chart) < 1:
-            chart = self.get_weekend_chart(date.year, date.month, date.day-4)
+            chart = self.get_weekend_chart(date.year, date.month, date.day)
         if len(chart) < 1:
-            return None
+            return []
         return chart
 
     def get_weekly_chart(self, year, month, date):
