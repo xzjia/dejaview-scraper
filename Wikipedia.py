@@ -1,12 +1,13 @@
 import os
 import re
 import json
-import random
 import logging
 
 from datetime import date, datetime
 
+from wikipedia import page, PageError
 from requests_html import HTMLSession
+
 
 WIKI_ENTRY = 'https://en.wikipedia.org/wiki/List_of_historical_anniversaries'
 SPLIT_HYPHEN = '-|–|－'
@@ -23,7 +24,7 @@ class OneWikiDay(object):
             '2020_'+one_date_wiki_url.split('/').pop(), '%Y_%B_%d')
         self.date_without_year = '{}-{}'.format(obj_date.month, obj_date.day)
         self.data = self.get_one_date(one_date_wiki_url)
-        self.logger.info('Populated {:5>} entries for {}'.format(
+        self.logger.info('Populated {:5>} entries for {:5>}'.format(
             len(self.data), self.date_without_year))
 
     def get_one_date(self, one_date_wiki_url):
@@ -54,18 +55,45 @@ class OneWikiDay(object):
         else:
             return []
 
+    def get_text_image_link(self, event, year):
+        # result = {l.split('/').pop().replace('_', ' '): {'link': l}
+                #   for l in event.absolute_links}
+        # for key, value in result.items():
+        def make_text(dic, with_summary=False):
+            if dic.keys():
+                if with_summary:
+                    return ''.join(['''<a href="{}">{}</a>{}'''
+                                    .format(dic[key]['link'], key,
+                                            ': <p>' +
+                                            dic[key]['summary'] +
+                                            '</p>'
+                                            if 'summary' in dic[key] else '') for key in dic])
+                else:
+                    return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
+                                                       .format(dic[key]['link'], key) for key in dic])
+            else:
+                return event.text
+
+        def choose_one_image(dic):
+            return [v['images'] for k, v in dic.items() if 'images' in v][0][0]
+
+        result = {l.split('/').pop().replace('_', ' '): {'link': l}
+                  for l in event.absolute_links}
+        if year > '2000':
+            for key in result:
+                try:
+                    wiki = page(key)
+                    result[key]['summary'] = wiki.summary[:90] + '...'
+                    result[key]['images'] = wiki.images
+                except PageError:
+                    self.logger.error(
+                        'An error when processing the key {}'.format(key))
+            return make_text(result, with_summary=True), choose_one_image(result)
+        else:
+
+            return make_text(result), ''
+
     def process_events(self, events_list, date_without_year, postfix=''):
-        def get_correct_raw_html(html_string):
-            with_links = html_string.replace(
-                '/wiki/', 'https://en.wikipedia.org/wiki/')
-            splitted = re.split(SPLIT_HYPHEN, with_links, maxsplit=1)
-            assert len(splitted) == 2
-            return splitted[1]
-
-        def get_correct_links(links, year):
-            res = sorted([x for x in links if year not in x])
-            return res
-
         def event_2_dict(event):
             if event.find('ul'):
                 self.logger.error('Error: Nested list of {} {} '.format(date_without_year,
@@ -83,13 +111,18 @@ class OneWikiDay(object):
             try:
                 date_obj = datetime.strptime(string_date, '%Y-%m-%d')
                 result['date'] = date_obj.strftime('%Y-%m-%d')
-            except:
+            except ValueError:
                 self.logger.debug(
                     "Error when parsing {}, maybe because it's too old".format(string_date))
                 return None
+            event_text, event_image_link = self.get_text_image_link(
+                event, year)
             result['title'] = desc + postfix
-            result['text'] = get_correct_raw_html(event.html)
-            result['link'] = get_correct_links(event.absolute_links, year)
+            result['text'] = event_text
+            result['link'] = ''
+            result['image_link'] = event_image_link
+            result['media_link'] = ''
+            self.logger.info('Processed one event: {}'.format(desc))
             return result
         return filter(lambda e: e, map(event_2_dict, events_list))
 
@@ -104,13 +137,12 @@ class Wikipedia(object):
         self.all_links = self.get_date_links()
         self.data = {}
         # for single_link in self.all_links:
-        for single_link in random.sample(self.all_links, 3):
+        # , 'https://en.wikipedia.org/wiki/August_10']:
+        for single_link in ['https://en.wikipedia.org/wiki/March_6']:
             w = OneWikiDay(single_link)
             self.data[w.date_without_year] = w.data
         self.events = [event for one_day in self.data.values()
                        for event in one_day]
-        self.logger.info(
-            'Collected {} Wikipedia entries in total'.format(len(self.events)))
         with open("Temp.json", 'w') as w:
             json.dump(self.events, w, indent=2)
 
@@ -131,13 +163,13 @@ class Wikipedia(object):
         for jsevt in json_array:
             try:
                 result.append({
-                    'timestamp': self.target_date,
-                    'title': 'Billboard Hot 100 #1 Song: {} by {}'.format(jsevt.title, jsevt.artist),
-                    'text': "{} was on the Billboard charts for {} weeks.".format(jsevt.title, str(jsevt.weeks)),
-                    'link': 'AA',
+                    'timestamp': jsevt['date'],
+                    'title': jsevt['title'],
+                    'text': jsevt['text'],
+                    'link': jsevt['link'],
                     'label_id': label_id,
-                    'image_link':  'image_link',
-                    'media_link':  'media_link'
+                    'image_link':  jsevt['image_link'],
+                    'media_link':  jsevt['media_link']
                 })
             except Exception as exception:
                 self.logger.error('Something unexpected happened: {} {}'.format(
