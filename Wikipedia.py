@@ -1,11 +1,12 @@
 import os
 import re
 import json
+import random
 import logging
 
 from datetime import date, datetime
 
-from wikipedia import page, PageError
+from wikipedia import page, PageError, DisambiguationError
 from requests_html import HTMLSession
 
 
@@ -56,52 +57,44 @@ class OneWikiDay(object):
             return []
 
     def get_text_image_link(self, event, year):
-        # result = {l.split('/').pop().replace('_', ' '): {'link': l}
-                #   for l in event.absolute_links}
-        # for key, value in result.items():
-        def make_text(dic, with_summary=False):
+        def make_text(dic):
             if dic.keys():
-                if with_summary:
-                    return ''.join(['''<a href="{}">{}</a>{}'''
-                                    .format(dic[key]['link'], key,
-                                            ': <p>' +
-                                            dic[key]['summary'] +
-                                            '</p>'
-                                            if 'summary' in dic[key] else '') for key in dic])
-                else:
-                    return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
-                                                       .format(dic[key]['link'], key) for key in dic])
+                return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
+                                                   .format(dic[key]['link'], key) for key in dic])
             else:
                 return event.text
-
-        def choose_one_image(dic):
-            return [v['images'] for k, v in dic.items() if 'images' in v][0][0]
-
-        result = {l.split('/').pop().replace('_', ' '): {'link': l}
-                  for l in event.absolute_links}
-        if year > '2000':
+        result = {}
+        for link in event.find('a'):
+            if 'title' in link.attrs and 'href' in link.attrs and link.attrs['title'] != year:
+                result[link.attrs['title']] = {
+                    'link': link.absolute_links.pop()}
+        if year > '1990':
             for key in result:
                 try:
                     wiki = page(key)
-                    result[key]['summary'] = wiki.summary[:90] + '...'
-                    result[key]['images'] = wiki.images
-                except PageError:
+                    imgs = [img for img in wiki.images if 'svg' not in img]
+                    if imgs:
+                        image_url = random.choice(imgs)
+                        self.logger.debug(
+                            'Processed {} -- {}'.format(self.date_without_year, event.text))
+                        return make_text(result), image_url
+                except (PageError, DisambiguationError) as e:
                     self.logger.error(
-                        'An error when processing the key {}'.format(key))
-            return make_text(result, with_summary=True), choose_one_image(result)
+                        '{} when processing {} -- {} -- {}'.format(type(e).__name__, self.date_without_year, event.text, key))
+                    pass
+            return make_text(result), ''
         else:
-
             return make_text(result), ''
 
     def process_events(self, events_list, date_without_year, postfix=''):
         def event_2_dict(event):
             if event.find('ul'):
-                self.logger.error('Error: Nested list of {} {} '.format(date_without_year,
+                self.logger.debug('Error: Nested list of {} {} '.format(date_without_year,
                                                                         event.text))
                 return None
             splitted = re.split(SPLIT_HYPHEN, event.text, maxsplit=1)
             if len(splitted) < 2:
-                self.logger.error('Error: No hyphen of {} {} '.format(date_without_year,
+                self.logger.debug('Error: No hyphen of {} {} '.format(date_without_year,
                                                                       event.text))
                 return None
             result = {}
@@ -122,7 +115,6 @@ class OneWikiDay(object):
             result['link'] = ''
             result['image_link'] = event_image_link
             result['media_link'] = ''
-            self.logger.info('Processed one event: {}'.format(desc))
             return result
         return filter(lambda e: e, map(event_2_dict, events_list))
 
@@ -136,14 +128,14 @@ class Wikipedia(object):
 
         self.all_links = self.get_date_links()
         self.data = {}
-        # for single_link in self.all_links:
-        # , 'https://en.wikipedia.org/wiki/August_10']:
-        for single_link in ['https://en.wikipedia.org/wiki/March_6']:
+        for single_link in self.all_links:
+            # for single_link in random.sample(self.all_links, 5):
+            # for single_link in ['https://en.wikipedia.org/wiki/October_30']:
             w = OneWikiDay(single_link)
             self.data[w.date_without_year] = w.data
         self.events = [event for one_day in self.data.values()
                        for event in one_day]
-        with open("Temp.json", 'w') as w:
+        with open("2018-06-19.json", 'w') as w:
             json.dump(self.events, w, indent=2)
 
     def get_date_links(self):
