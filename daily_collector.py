@@ -39,6 +39,7 @@ def lambda_handler(event, context):
 
     logger.info('Collecting Wikipedia articles...')
     wikipedia = Wikipedia()
+    wikipedia.store_rds(db)
 
 
 if __name__ == '__main__':
