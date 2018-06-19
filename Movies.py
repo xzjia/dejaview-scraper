@@ -6,7 +6,7 @@ import datetime
 
 import requests
 from requests_html import HTMLSession
-from MovieOne import MovieOne
+from MovieChart import MovieChart
 
 YOUTUBE_API = 'https://www.googleapis.com/youtube/v3/search'
 YOUTUBE_LINK_PREFIX = 'https://www.youtube.com/watch?v='
@@ -16,10 +16,11 @@ IMDB_SEARCH_PREFIX = 'https://www.imdb.com/find?q='
 class Movies(object):
     def __init__(self):
         self.target_date = datetime.datetime.now()
+        self.chart = MovieChart()
         self.label_name = 'Movies'
         # self.logger = logging.getLogger(
         #     'daily_collector.{}'.format(self.__class__.__name__))
-        self.events = [MovieOne().movie]
+        self.events = [self.chart.movies[0]]
         self.multimedia_link_memo = {}
 
     def get_query(self, title):
