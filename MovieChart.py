@@ -2,6 +2,8 @@ import datetime
 import json
 from requests_html import HTMLSession
 
+THE_NUMBERS_URL = "https://www.the-numbers.com/box-office-chart/"
+
 
 class MovieChart(object):
     def __init__(self):
@@ -23,13 +25,13 @@ class MovieChart(object):
     def get_weekly_chart(self, year, month, date):
         session = HTMLSession()
         raw_html = session.get(
-            "https://www.the-numbers.com/box-office-chart/weekly/{}/{}/{}".format(year, month, date))
+            THE_NUMBERS_URL + "weekly/{}/{}/{}".format(year, month, date))
         return self.get_chart(raw_html)
 
     def get_weekend_chart(self, year, month, date):
         session = HTMLSession()
         raw_html = session.get(
-            "https://www.the-numbers.com/box-office-chart/weekend/{}/{}/{}".format(year, month, date))
+            THE_NUMBERS_URL + "weekend/{}/{}/{}".format(year, month, date))
         return self.get_chart(raw_html)
 
     def get_chart(self, raw_html):

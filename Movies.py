@@ -71,6 +71,35 @@ class Movies(object):
             })
         return result
 
+    def already_same(self, existing_event, row):
+        return existing_event['link'] == row['link'] \
+            and existing_event['image_link'] == row['image_link'] \
+            and existing_event['media_link'] == row['media_link'] \
+            and existing_event['text'] == row['text']
+
+    # def store_s3(self, s3_bucket):
+    #     if len(self.events) > 0:
+    #         s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
+    #                                                  self.target_date.strftime("%Y-%m-%d"))).put(Body=self.chart)
+    #         self.logger.info('Successfully stored {} {} events into S3'.format(
+    #             self.target_date, len(self.events)))
+    #     else:
+    #         self.logger.warn(
+    #             '***** No data for {} on {} so skipping... '.format(self.label, self.target_date))
+
+    def store_rds(self, db):
+        label_id = db.get_label_id_from_name(self.label_name)
+        rows = self.map_json_array_to_rows(self.events, label_id)
+        no_inserts, no_updates, no_notouch = db.store_rds(
+            rows, label_id, self.already_same)
+        # self.logger.info('{} Total from json:{:>5} Inserted: {:>5} Updated: {:>5} Up-to-date: {:>5}'.format(
+        #     self.target_date,
+        #     len(rows),
+        #     no_inserts,
+        #     no_updates,
+        #     no_notouch
+        # ))
+
 
 def main():
     # Some unit tests
@@ -78,7 +107,8 @@ def main():
     if m.events == []:
         print("None")
     else:
-        print(m.events[0]["movie"])
+        print(m.target_date.strftime("%Y-%m-%d"))
+        print(m.chart.movies[0])
         print(m.map_json_array_to_rows(m.events, 5))
 
 
