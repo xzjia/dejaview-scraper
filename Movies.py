@@ -31,7 +31,8 @@ class Movies(object):
 
     def get_query(self, title):
         raw = title + ' ' + str(self.target_date.year)
-        return raw.replace(' ', '+')
+        title = re.sub(r'[^\w]', ' ', title)
+        return title.replace(' ', '+')
 
     def get_media_link(self, title):
         query = self.get_query(title + " official movie trailer")
