@@ -6,8 +6,8 @@ THE_NUMBERS_URL = "https://www.the-numbers.com/box-office-chart/"
 
 
 class MovieChart(object):
-    def __init__(self):
-        self.target_date = datetime.datetime.now()
+    def __init__(self, target_date=datetime.datetime.now()):
+        self.target_date = target_date
         self.movies = self.getMovies()
 
     def getMovies(self):
@@ -53,7 +53,7 @@ class MovieChart(object):
 def main():
     # Unit Test
     mc = MovieChart()
-    print(mc.movies)
+    print(mc.movies[0])
 
 
 if __name__ == '__main__':

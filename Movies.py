@@ -14,12 +14,12 @@ IMDB_SEARCH_PREFIX = 'https://www.imdb.com/find?q='
 
 
 class Movies(object):
-    def __init__(self):
-        self.target_date = datetime.datetime.now()
-        self.chart = MovieChart()
+    def __init__(self, target_date=datetime.datetime.now()):
+        self.target_date = target_date
+        self.chart = MovieChart(self.target_date)
         self.label_name = 'Movies'
-        # self.logger = logging.getLogger(
-        #     'daily_collector.{}'.format(self.__class__.__name__))
+        self.logger = logging.getLogger(
+            'daily_collector.{}'.format(self.__class__.__name__))
         self.events = self.get_top_movie()
         self.multimedia_link_memo = {}
 
@@ -34,7 +34,7 @@ class Movies(object):
         return raw.replace(' ', '+')
 
     def get_media_link(self, title):
-        query = self.get_query(title + " official movie trailer ")
+        query = self.get_query(title + " official movie trailer")
         if query in self.multimedia_link_memo:
             return self.multimedia_link_memo[query]
         payload = {
@@ -45,7 +45,7 @@ class Movies(object):
         }
         items = requests.get(YOUTUBE_API, params=payload).json()['items']
         videos = list(
-            filter(lambda x: x['id']['kind'] == 'youtube#video', items))
+            filter(lambda x: x['id']['kind'] == 'youtube#video' and 'Trailer' in x['snippet']['title'], items))
         if len(videos) > 0:
             winner = videos[0]
             image_link = winner['snippet']['thumbnails']['high']['url']
@@ -59,16 +59,22 @@ class Movies(object):
     def map_json_array_to_rows(self, json_array, label_id):
         result = []
         for jsevt in json_array:
-            image_link, media_link = self.get_media_link(jsevt["movie"])
-            result.append({
-                'timestamp': self.target_date.strftime("%Y-%m-%d"),
-                'title': "#1 Movie: {} ".format(jsevt["movie"]),
-                'text': "{} grossed a total of {}.".format(jsevt["movie"], str(jsevt["total_gross"])),
-                'link': IMDB_SEARCH_PREFIX + self.get_query(jsevt["movie"]),
-                'label_id': label_id,
-                'image_link':  image_link,
-                'media_link':  media_link
-            })
+            try:
+                title = jsevt["movie"].replace("â€™", "'")
+                image_link, media_link = self.get_media_link(title)
+                result.append({
+                    'timestamp': self.target_date.strftime("%Y-%m-%d"),
+                    'title': "#1 Movie: {}".format(title),
+                    'text': "{} grossed a total of {}.".format(title, str(jsevt["total_gross"])),
+                    'link': IMDB_SEARCH_PREFIX + self.get_query(title),
+                    'label_id': label_id,
+                    'image_link':  image_link,
+                    'media_link':  media_link
+                })
+            except Exception as exception:
+                self.logger.error('Something unexpected happened: {} {}'.format(
+                    type(exception).__name__,
+                    self.target_date))
         return result
 
     def already_same(self, existing_event, row):
@@ -77,33 +83,34 @@ class Movies(object):
             and existing_event['media_link'] == row['media_link'] \
             and existing_event['text'] == row['text']
 
-    # def store_s3(self, s3_bucket):
-    #     if len(self.events) > 0:
-    #         s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-    #                                                  self.target_date.strftime("%Y-%m-%d"))).put(Body=self.chart)
-    #         self.logger.info('Successfully stored {} {} events into S3'.format(
-    #             self.target_date, len(self.events)))
-    #     else:
-    #         self.logger.warn(
-    #             '***** No data for {} on {} so skipping... '.format(self.label, self.target_date))
+    def store_s3(self, s3_bucket):
+        # Pick the right name for json files.
+        if len(self.events) > 0:
+            s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
+                                                     self.target_date)).put(Body=self.chart
+            self.logger.info('Successfully stored {} {} events into S3'.format(
+                self.target_date, len(self.events)))
+        else:
+            self.logger.warn(
+                '***** No data for {} so skipping... '.format(self.target_date))
 
     def store_rds(self, db):
-        label_id = db.get_label_id_from_name(self.label_name)
-        rows = self.map_json_array_to_rows(self.events, label_id)
-        no_inserts, no_updates, no_notouch = db.store_rds(
+        label_id=db.get_label_id_from_name(self.label_name)
+        rows=self.map_json_array_to_rows(self.events, label_id)
+        no_inserts, no_updates, no_notouch=db.store_rds(
             rows, label_id, self.already_same)
-        # self.logger.info('{} Total from json:{:>5} Inserted: {:>5} Updated: {:>5} Up-to-date: {:>5}'.format(
-        #     self.target_date,
-        #     len(rows),
-        #     no_inserts,
-        #     no_updates,
-        #     no_notouch
-        # ))
+        self.logger.info('{} Total from json:{:>5} Inserted: {:>5} Updated: {:>5} Up-to-date: {:>5}'.format(
+            self.target_date,
+            len(rows),
+            no_inserts,
+            no_updates,
+            no_notouch
+        ))
 
 
 def main():
     # Some unit tests
-    m = Movies()
+    m=Movies()
     if m.events == []:
         print("None")
     else:
