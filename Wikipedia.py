@@ -58,6 +58,9 @@ class OneWikiDay(object):
             return []
 
     def get_text_image_link(self, event, year):
+        def is_good_img(img_url):
+            return all([bad_ext not in img_url for bad_ext in ['svg', 'webm']])
+
         def make_text(dic):
             if dic.keys():
                 return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
@@ -75,7 +78,7 @@ class OneWikiDay(object):
                 try:
                     wiki = page(key)
                     if wiki and wiki.images:
-                        imgs = [img for img in wiki.images if 'svg' not in img]
+                        imgs = [img for img in wiki.images if is_good_img(img)]
                         image_url = random.choice(imgs) if imgs else ''
                         self.logger.debug(
                             'Processed {} -- {}'.format(self.date_without_year, event.text))
@@ -87,7 +90,8 @@ class OneWikiDay(object):
                     self.logger.error('Library internal error when processing {} -- {} -- {}'.format(
                         self.date_without_year, event.text, key))
                 except:
-                    self.logger.error('Skipping this one')
+                    self.logger.error(
+                        'Skipping this one {}'.format(event.text))
             return make_text(result), ''
         else:
             return make_text(result), ''
