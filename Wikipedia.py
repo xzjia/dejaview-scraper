@@ -109,7 +109,7 @@ class OneWikiDay(object):
                 return None
             result = {}
             year = splitted[0].strip()
-            desc = re.sub('\[\d+\]', '', splitted[1].strip())
+            desc = re.sub(r'\[\d+\]', '', splitted[1].strip())
             string_date = year + '-' + date_without_year
             try:
                 date_obj = datetime.strptime(string_date, '%Y-%m-%d')
@@ -194,7 +194,7 @@ class Wikipedia(object):
     def store_s3(self, s3_bucket):
         if len(self.data.keys()) > 0:
             s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-                                                     self.target_date)).put(Body=self.chart.json())
+                                                     self.target_date)).put(Body=self.data)
             self.logger.info('Successfully stored {} {} events into S3'.format(
                 self.target_date, len(self.data.keys())))
         else:
