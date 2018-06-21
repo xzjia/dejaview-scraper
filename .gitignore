@@ -4,3 +4,4 @@
 awslambda-psycopg2/
 *.zip
 *.json
+*.log
