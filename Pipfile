@@ -11,6 +11,7 @@ sqlalchemy = "*"
 "billboard.py" = "*"
 requests-html = "*"
 wikipedia = "*"
+stopit = "*"
 
 [dev-packages]
 "autopep8" = "*"

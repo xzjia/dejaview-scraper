@@ -6,6 +6,7 @@ import logging
 
 from datetime import date, datetime
 
+import stopit
 from wikipedia import page, PageError, DisambiguationError
 from requests_html import HTMLSession
 
@@ -57,10 +58,31 @@ class OneWikiDay(object):
         else:
             return []
 
-    def get_text_image_link(self, event, year):
+    @stopit.threading_timeoutable(default=None)
+    def get_image_from_links(self, links_dict, event_string):
         def is_good_img(img_url):
             return all([bad_ext not in img_url for bad_ext in ['svg', 'webm']])
+        for key in links_dict:
+            try:
+                wiki = page(key)
+                if wiki and wiki.images:
+                    imgs = [img for img in wiki.images if is_good_img(img)]
+                    image_url = random.choice(imgs) if imgs else ''
+                    self.logger.debug(
+                        'Processed {} -- {}'.format(self.date_without_year, event_string))
+                    return image_url
+            except (PageError, DisambiguationError) as e:
+                self.logger.debug(
+                    '{} when processing {} -- {} -- {}'.format(type(e).__name__, self.date_without_year, event_string, key))
+            except stopit.TimeoutException:
+                self.logger.warn(
+                    'Timeout for *{}* when processing {}'.format(key, event_string))
+            except:
+                self.logger.warn(
+                    'Unexpected exception for *{}* when processing {}'.format(key, event_string))
+        return None
 
+    def get_text_image_link(self, event, year):
         def make_text(dic):
             if dic.keys():
                 return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
@@ -72,27 +94,10 @@ class OneWikiDay(object):
             if 'title' in link.attrs and 'href' in link.attrs and link.attrs['title'] != year:
                 result[link.attrs['title']] = {
                     'link': link.absolute_links.pop()}
-        self.logger.info(result)
         if year >= IMAGE_YEAR_CUTOFF:
-            for key in result:
-                try:
-                    wiki = page(key)
-                    if wiki and wiki.images:
-                        imgs = [img for img in wiki.images if is_good_img(img)]
-                        image_url = random.choice(imgs) if imgs else ''
-                        self.logger.debug(
-                            'Processed {} -- {}'.format(self.date_without_year, event.text))
-                        return make_text(result), image_url
-                except (PageError, DisambiguationError) as e:
-                    self.logger.debug(
-                        '{} when processing {} -- {} -- {}'.format(type(e).__name__, self.date_without_year, event.text, key))
-                except KeyError:
-                    self.logger.error('Library internal error when processing {} -- {} -- {}'.format(
-                        self.date_without_year, event.text, key))
-                except:
-                    self.logger.error(
-                        'Skipping this one {}'.format(event.text))
-            return make_text(result), ''
+            image_url = self.get_image_from_links(
+                result, event.text, timeout=5)
+            return make_text(result), image_url
         else:
             return make_text(result), ''
 
