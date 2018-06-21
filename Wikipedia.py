@@ -172,9 +172,7 @@ class Wikipedia(object):
         return set.union(*map(lambda one_month: one_month.absolute_links, nav))
 
     def already_same(self, existing_event, row):
-        return existing_event['link'] == row['link'] \
-            and existing_event['image_link'] == row['image_link'] \
-            and existing_event['media_link'] == row['media_link'] \
+        return existing_event['image_link'] == row['image_link'] \
             and existing_event['text'] == row['text']
 
     def map_json_array_to_rows(self, json_array, label_id):
