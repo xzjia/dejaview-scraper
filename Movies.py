@@ -88,7 +88,7 @@ class Movies(object):
         # Pick the right name for json files.
         if len(self.events) > 0:
             s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-                                                     self.target_date.strftime("%Y-%m-%d"))).put(Body=self.chart)
+                                                     self.target_date.strftime("%Y-%m-%d"))).put(Body=json.dumps(self.events, indent=2))
             self.logger.info('Successfully stored {} {} events into S3'.format(
                 self.target_date, len(self.events)))
         else:
