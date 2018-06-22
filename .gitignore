@@ -1,7 +1,7 @@
 .DS_Store
 .env*
 .vscode/
-awslambda-psycopg2/
 *.zip
-*.json
 *.log
+node_modules/
+.serverless/

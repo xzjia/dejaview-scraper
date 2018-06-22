@@ -1,7 +1,7 @@
 # What's this
 
-This is a project that collects json data from pre-defined data source, store them into a database, and store the raw json as files.
-Currently, it only supports AWS S3 and RDS.
+This is a project that scrape data from pre-defined data source, store them into a database, and store the raw json as files in an object storage.
+[Serverless Framework](https://serverless.com/) is being used to deploy this to AWS, and it involves AWS S3 and RDS.
 
 # How to start
 
@@ -16,8 +16,10 @@ pipenv and python is necessary to run this project.
 
 Make a new file called `.env` at the root of the project. The following keys are necessary for now.
 
+- `AWS_PROFILE`: The AWS profile will be used (if none, set it to `default`). You can also rely on serverless [itself](https://serverless.com/framework/docs/providers/aws/guide/iam/) to manage aws profile.
 - `BUCKET_NAME`: The bucket name
 - `DATABASE_URL`: Where is the database
+- `YOUTUBE_API_KEY`: The API key used to query YOUTUBE information
 - `NYT_API_KEYS`: Valid NYT API keys separated by `_`. For example: onenytkeyabc_anothernytkeyabc
 
 ## Setup the project
@@ -30,6 +32,23 @@ pipenv install --dev # Install all the dependencies
 pipenv shell # Spawns a shell within the virtualenv
 
 pipenv run python daily_collector.py
+```
+
+# How to run
+
+- To run the function locally, do `pipenv run python daily_collector.py` and see the standard output for the results.
+  - `pipenv run` will read in `.env` file into the process.
+- To run the function on AWS Lambda, you will need following things.
+
+```bash
+# Install serverless CLI
+npm install serverless -g
+
+# Install the plugin listed in package.json
+npm install
+
+# Deploy to AWS Lambda! Note sls is a shortcut for serverless
+sls deploy
 ```
 
 # The interface for adding new datasource
@@ -105,9 +124,3 @@ class XXX(object):
             no_notouch
         ))
 ```
-
-# How to run
-
-- To run the function locally, do `pipenv run python daily_collector.py` and see the standard output for the results.
-  - `pipenv run` will read in `.env` file into the process.
-- To run the function on AWS Lambda, make a deployment package and upload it to Lambda as documented [here](https://docs.aws.amazon.com/lambda/latest/dg/lambda-python-how-to-create-deployment-package.html).
