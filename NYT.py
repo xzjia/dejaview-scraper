@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import logging
 import time
@@ -7,6 +8,7 @@ from datetime import timedelta, date
 import requests
 
 NYT_ARTICLE_SEARCH_EP = 'https://api.nytimes.com/svc/search/v2/articlesearch.json'
+FILTER_WORDS = ['-- No Title$']
 
 
 class NYT(object):
@@ -37,19 +39,36 @@ class NYT(object):
             return date_object.strftime('%Y-%m-%d')
         return date_object.strftime('%Y%m%d')
 
+    def get_title_from_event(self, event):
+        try:
+            candidate = event['headline'].get(
+                'print_headline', event['headline']['main'])
+        except KeyError:
+            self.logger.error('No title found for this event {}'.format(event))
+            return None
+        if len(candidate) == 0:
+            return None
+        for bad_word in FILTER_WORDS:
+            match = re.search(bad_word, candidate)
+            if match:
+                return None
+        return candidate
+
     def map_json_array_to_rows(self, json_array, label_id):
         result = []
         for jsevt in json_array:
             try:
-                result.append({
-                    'timestamp': jsevt['pub_date'],
-                    'title': jsevt['headline'].get('print_headline', jsevt['headline']['main']),
-                    'text': jsevt['snippet'],
-                    'link': jsevt['web_url'],
-                    'label_id': label_id,
-                    'image_link': 'https://www.nytimes.com/' + next(filter(lambda e: e['subtype'] == 'thumbnail', jsevt['multimedia']))['url'],
-                    'media_link': ''
-                })
+                title = self.get_title_from_event(jsevt)
+                if title:
+                    result.append({
+                        'timestamp': jsevt['pub_date'],
+                        'title': title,
+                        'text': jsevt['snippet'],
+                        'link': jsevt['web_url'],
+                        'label_id': label_id,
+                        'image_link': 'https://www.nytimes.com/' + next(filter(lambda e: e['subtype'] == 'thumbnail', jsevt['multimedia']))['url'],
+                        'media_link': ''
+                    })
             except Exception as exception:
                 self.logger.error('{} {}'.format(
                     jsevt['pub_date'], type(exception).__name__))
@@ -144,3 +163,12 @@ class NYT(object):
             raw_response = self.retry_api_call(NYT_ARTICLE_SEARCH_EP, payload)
         self.error_count = 0
         return raw_response
+
+
+def main():
+    nyt = NYT()
+    print(len(nyt.events))
+
+
+if __name__ == '__main__':
+    main()

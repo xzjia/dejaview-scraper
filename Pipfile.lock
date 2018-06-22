@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c58b1c5354f2b2430abb10aee786cce3999a1c7e056cbf4ea115f91711362a36"
+            "sha256": "bea8cb511d2fc8aea5dbea5fcf6b0c56e7a87386df8b2ac02b44424b3d52083c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -33,18 +33,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:14e53a29a604f5d1ae955a3748a23e37be7c33298cfe545ffca2313ab9393634",
-                "sha256:7d3ed0ba56f3c4e8b44522e2fc661c7dc1975b0ed3989d1c0aee75184b72a49b"
+                "sha256:3f1196075570fee438afb28d8762616d111d220b2ba15fd83e340c46fc3f8cb1",
+                "sha256:534eb2bde29b89cac7d79dc817dad74649b033d8484b375a7a5269b2bd9ddbc1"
             ],
             "index": "pypi",
-            "version": "==1.7.40"
+            "version": "==1.7.42"
         },
         "botocore": {
             "hashes": [
-                "sha256:42fb33f3fdf976a18f1392f6dcf9222a1e91269a6019f4997c675a5b1392fd0e",
-                "sha256:8873388deff33683bc437dd615ada5862c721754accf379ebe4ce0e21cbe2544"
+                "sha256:4767a0369b1414a8e59bbdd5e0c06213e545bc2a38892f79d3b8fa4e04a18f4b",
+                "sha256:7dcb10471a2f6eea0d9ccf31d25411de519f108218772682ed603a30bbb38ae8"
             ],
-            "version": "==1.10.40"
+            "version": "==1.10.42"
         },
         "bs4": {
             "hashes": [
@@ -238,6 +238,13 @@
             "index": "pypi",
             "version": "==1.2.8"
         },
+        "stopit": {
+            "hashes": [
+                "sha256:f7f39c583fd92027bd9d06127b259aee7a5b7945c1f1fa56263811e1e766996d"
+            ],
+            "index": "pypi",
+            "version": "==1.1.2"
+        },
         "urllib3": {
             "hashes": [
                 "sha256:a68ac5e15e76e7e5dd2b8f94007233e01effe3e50e8daddf69acfd81cb686baf",
@@ -269,6 +276,13 @@
                 "sha256:d3724acff61ee1029fefc614cf005982338b033998a0b71fbb13a0a2fd99ab6f"
             ],
             "version": "==5.0.1"
+        },
+        "wikipedia": {
+            "hashes": [
+                "sha256:db0fad1829fdd441b1852306e9856398204dc0786d2996dd2e0c8bb8e26133b2"
+            ],
+            "index": "pypi",
+            "version": "==1.4.0"
         }
     },
     "develop": {

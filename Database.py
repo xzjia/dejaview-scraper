@@ -7,7 +7,7 @@ class Database(object):
     def __init__(self):
         self.logger = logging.getLogger('daily_collector.Database')
         self.conn = self.get_db_conn()
-        self.logger.info('Connected to  {}'.format(
+        self.logger.info('Connected to {}'.format(
             os.environ['DATABASE_URL'].split('@').pop()))
         self.label_table = sa.table('label', sa.column(
             'id', sa.Integer), sa.column('name', sa.Text))

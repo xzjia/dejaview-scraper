@@ -6,12 +6,16 @@ import logging
 
 from datetime import date, datetime
 
+import stopit
+from wikipedia import page, PageError, DisambiguationError
 from requests_html import HTMLSession
+
 
 WIKI_ENTRY = 'https://en.wikipedia.org/wiki/List_of_historical_anniversaries'
 SPLIT_HYPHEN = '-|–|－'
 EVENTS_INDEX = 1
 BIRTHS_INDEX = 2
+IMAGE_YEAR_CUTOFF = '1990'
 
 
 class OneWikiDay(object):
@@ -23,7 +27,7 @@ class OneWikiDay(object):
             '2020_'+one_date_wiki_url.split('/').pop(), '%Y_%B_%d')
         self.date_without_year = '{}-{}'.format(obj_date.month, obj_date.day)
         self.data = self.get_one_date(one_date_wiki_url)
-        self.logger.info('Populated {:5>} entries for {}'.format(
+        self.logger.info('Populated {:5>} entries for {:5>}'.format(
             len(self.data), self.date_without_year))
 
     def get_one_date(self, one_date_wiki_url):
@@ -54,42 +58,77 @@ class OneWikiDay(object):
         else:
             return []
 
+    @stopit.threading_timeoutable(default=None)
+    def get_image_from_links(self, links_dict, event_string):
+        def is_good_img(img_url):
+            return all([bad_ext not in img_url for bad_ext in ['svg', 'webm']])
+        for key in links_dict:
+            try:
+                wiki = page(key)
+                if wiki and wiki.images:
+                    imgs = [img for img in wiki.images if is_good_img(img)]
+                    image_url = random.choice(imgs) if imgs else ''
+                    self.logger.debug(
+                        'Processed {} -- {}'.format(self.date_without_year, event_string))
+                    return image_url
+            except (PageError, DisambiguationError) as e:
+                self.logger.debug(
+                    '{} when processing {} -- {} -- {}'.format(type(e).__name__, self.date_without_year, event_string, key))
+            except stopit.TimeoutException:
+                self.logger.warn(
+                    'Timeout for *{}* when processing {}'.format(key, event_string))
+            except:
+                self.logger.warn(
+                    'Unexpected exception for *{}* when processing {}'.format(key, event_string))
+        return None
+
+    def get_text_image_link(self, event, year):
+        def make_text(dic):
+            if dic.keys():
+                return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
+                                                   .format(dic[key]['link'], key) for key in dic])
+            else:
+                return event.text
+        result = {}
+        for link in event.find('a'):
+            if 'title' in link.attrs and 'href' in link.attrs and link.attrs['title'] != year:
+                result[link.attrs['title']] = {
+                    'link': link.absolute_links.pop()}
+        if year >= IMAGE_YEAR_CUTOFF:
+            image_url = self.get_image_from_links(
+                result, event.text, timeout=5)
+            return make_text(result), image_url
+        else:
+            return make_text(result), ''
+
     def process_events(self, events_list, date_without_year, postfix=''):
-        def get_correct_raw_html(html_string):
-            with_links = html_string.replace(
-                '/wiki/', 'https://en.wikipedia.org/wiki/')
-            splitted = re.split(SPLIT_HYPHEN, with_links, maxsplit=1)
-            assert len(splitted) == 2
-            return splitted[1]
-
-        def get_correct_links(links, year):
-            res = sorted([x for x in links if year not in x])
-            return res
-
         def event_2_dict(event):
             if event.find('ul'):
-                self.logger.error('Error: Nested list of {} {} '.format(date_without_year,
+                self.logger.debug('Error: Nested list of {} {} '.format(date_without_year,
                                                                         event.text))
                 return None
             splitted = re.split(SPLIT_HYPHEN, event.text, maxsplit=1)
             if len(splitted) < 2:
-                self.logger.error('Error: No hyphen of {} {} '.format(date_without_year,
+                self.logger.debug('Error: No hyphen of {} {} '.format(date_without_year,
                                                                       event.text))
                 return None
             result = {}
             year = splitted[0].strip()
-            desc = splitted[1].strip()
+            desc = re.sub(r'\[\d+\]', '', splitted[1].strip())
             string_date = year + '-' + date_without_year
             try:
                 date_obj = datetime.strptime(string_date, '%Y-%m-%d')
                 result['date'] = date_obj.strftime('%Y-%m-%d')
-            except:
+            except ValueError:
                 self.logger.debug(
                     "Error when parsing {}, maybe because it's too old".format(string_date))
                 return None
+            event_text, event_image_link = self.get_text_image_link(
+                event, year)
             result['title'] = desc + postfix
-            result['text'] = get_correct_raw_html(event.html)
-            result['link'] = get_correct_links(event.absolute_links, year)
+            result['text'] = event_text
+            if event_image_link:
+                result['image_link'] = event_image_link
             return result
         return filter(lambda e: e, map(event_2_dict, events_list))
 
@@ -102,17 +141,29 @@ class Wikipedia(object):
         self.target_date = date.today().strftime('%Y-%m-%d')
 
         self.all_links = self.get_date_links()
+
         self.data = {}
-        # for single_link in self.all_links:
-        for single_link in random.sample(self.all_links, 3):
-            w = OneWikiDay(single_link)
+        # for single_link in sorted(self.all_links)[275:]:
+        for single_link in ['https://en.wikipedia.org/wiki/August_3']:
+            self.logger.info('About to process {} ...'.format(single_link))
+            try:
+                w = OneWikiDay(single_link)
+            except:
+                self.logger.error(
+                    '*********** Skipped ********* {}'.format(single_link))
+                continue
             self.data[w.date_without_year] = w.data
-        self.events = [event for one_day in self.data.values()
-                       for event in one_day]
-        self.logger.info(
-            'Collected {} Wikipedia entries in total'.format(len(self.events)))
-        with open("Temp.json", 'w') as w:
-            json.dump(self.events, w, indent=2)
+            self.write_json()
+
+    def write_json(self):
+        try:
+            with open("{}.json".format(self.target_date)) as w:
+                existing = json.load(w)
+        except:
+            existing = {}
+        result = {**existing, **self.data}
+        with open("{}.json".format(self.target_date), 'w') as w:
+            json.dump(result, w, indent=2)
 
     def get_date_links(self):
         session = HTMLSession()
@@ -121,9 +172,7 @@ class Wikipedia(object):
         return set.union(*map(lambda one_month: one_month.absolute_links, nav))
 
     def already_same(self, existing_event, row):
-        return existing_event['link'] == row['link'] \
-            and existing_event['image_link'] == row['image_link'] \
-            and existing_event['media_link'] == row['media_link'] \
+        return existing_event['image_link'] == row['image_link'] \
             and existing_event['text'] == row['text']
 
     def map_json_array_to_rows(self, json_array, label_id):
@@ -131,13 +180,13 @@ class Wikipedia(object):
         for jsevt in json_array:
             try:
                 result.append({
-                    'timestamp': self.target_date,
-                    'title': 'Billboard Hot 100 #1 Song: {} by {}'.format(jsevt.title, jsevt.artist),
-                    'text': "{} was on the Billboard charts for {} weeks.".format(jsevt.title, str(jsevt.weeks)),
-                    'link': 'AA',
+                    'timestamp': jsevt['date'],
+                    'title': jsevt['title'],
+                    'text': jsevt['text'],
+                    'link': '',
                     'label_id': label_id,
-                    'image_link':  'image_link',
-                    'media_link':  'media_link'
+                    'image_link':  jsevt['image_link'] if 'image_link' in jsevt else '',
+                    'media_link':  ''
                 })
             except Exception as exception:
                 self.logger.error('Something unexpected happened: {} {}'.format(
@@ -146,23 +195,22 @@ class Wikipedia(object):
         return result
 
     def store_s3(self, s3_bucket):
-        # Pick the right name for json files.
-        if len(self.events) > 0:
+        if len(self.data.keys()) > 0:
             s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-                                                     self.target_date)).put(Body=self.chart.json())
+                                                     self.target_date)).put(Body=self.data)
             self.logger.info('Successfully stored {} {} events into S3'.format(
-                self.target_date, len(self.events)))
+                self.target_date, len(self.data.keys())))
         else:
             self.logger.warn(
                 '***** No data for {} so skipping... '.format(self.target_date))
 
-    def store_rds(self, db):
+    def store_rds(self, db, events_list, date_key):
         label_id = db.get_label_id_from_name(self.label_name)
-        rows = self.map_json_array_to_rows(self.events, label_id)
+        rows = self.map_json_array_to_rows(events_list, label_id)
         no_inserts, no_updates, no_notouch = db.store_rds(
             rows, label_id, self.already_same)
         self.logger.info('{} Total from json:{:>5} Inserted: {:>5} Updated: {:>5} Up-to-date: {:>5}'.format(
-            self.target_date,
+            date_key,
             len(rows),
             no_inserts,
             no_updates,

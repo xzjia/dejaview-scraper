@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import json
 import logging
 import datetime
@@ -30,9 +31,8 @@ class Movies(object):
             return [self.chart.movies[0]]
 
     def get_query(self, title):
-        raw = title + ' ' + str(self.target_date.year)
         title = re.sub(r'[^\w]', ' ', title)
-        return title.replace(' ', '+')
+        return title.replace(' ', '+') + '+' + str(self.target_date.year)
 
     def get_media_link(self, title):
         query = self.get_query(title + " official movie trailer")
@@ -88,7 +88,7 @@ class Movies(object):
         # Pick the right name for json files.
         if len(self.events) > 0:
             s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-                                                     self.target_date.strftime("%Y-%m-%d"))).put(Body=self.chart
+                                                     self.target_date.strftime("%Y-%m-%d"))).put(Body=json.dumps(self.events, indent=2))
             self.logger.info('Successfully stored {} {} events into S3'.format(
                 self.target_date, len(self.events)))
         else:
@@ -96,9 +96,9 @@ class Movies(object):
                 '***** No data for {} so skipping... '.format(self.target_date))
 
     def store_rds(self, db):
-        label_id=db.get_label_id_from_name(self.label_name)
-        rows=self.map_json_array_to_rows(self.events, label_id)
-        no_inserts, no_updates, no_notouch=db.store_rds(
+        label_id = db.get_label_id_from_name(self.label_name)
+        rows = self.map_json_array_to_rows(self.events, label_id)
+        no_inserts, no_updates, no_notouch = db.store_rds(
             rows, label_id, self.already_same)
         self.logger.info('{} Total from json:{:>5} Inserted: {:>5} Updated: {:>5} Up-to-date: {:>5}'.format(
             self.target_date,
@@ -111,7 +111,7 @@ class Movies(object):
 
 def main():
     # Some unit tests
-    m=Movies()
+    m = Movies()
     if m.events == []:
         print("None")
     else:

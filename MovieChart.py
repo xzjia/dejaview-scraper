@@ -53,7 +53,7 @@ class MovieChart(object):
 def main():
     # Unit Test
     mc = MovieChart()
-    print(mc.movies[0])
+    print(mc.movies)
 
 
 if __name__ == '__main__':
