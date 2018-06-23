@@ -83,6 +83,16 @@ functions:
     timeout: 300
     events:
      - schedule: cron(0 17 * * ? *)
+  wikipedia_collector:
+    handler: daily_collector.wikipedia_handler
+    environment:
+      BUCKET_NAME: ${env:BUCKET_NAME}
+      DATABASE_URL: ${env:DATABASE_URL}
+      YOUTUBE_API_KEY: ${env:YOUTUBE_API_KEY}
+    timeout: 300
+    events:
+     - schedule: rate(7 days)
+
 
 resources:
  Resources:
