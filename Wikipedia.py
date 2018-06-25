@@ -43,16 +43,11 @@ class WikiEvent(object):
     def get_string(self):
         return self.data['date'] + '_' + self.data['title']
 
-    def add_text_and_image(self):
-        event_text, event_image_link = self.get_text_image_link()
-        self.data['text'] = event_text
-        if event_image_link:
-            self.data['image_link'] = event_image_link
-
     @stopit.threading_timeoutable(default=None)
     def get_image_from_links(self, links_dict, event_string):
         def is_good_img(img_url):
-            return all([bad_ext not in img_url for bad_ext in ['svg', 'webm']])
+            # Filter out unsavable links
+            return all([bad_ext not in img_url for bad_ext in ['svg', 'pdf']])
         for key in links_dict:
             try:
                 wiki = page(key)
@@ -64,7 +59,7 @@ class WikiEvent(object):
                     return image_url
             except (PageError, DisambiguationError) as e:
                 self.logger.debug(
-                    '{} when processing {} -- {} -- {}'.format(type(e).__name__, self.date_without_year, event_string, key))
+                    '{} when processing -- {} -- {}'.format(type(e).__name__, event_string, key))
             except stopit.TimeoutException:
                 self.logger.warn(
                     'Timeout for *{}* when processing {}'.format(key, event_string))
@@ -74,21 +69,32 @@ class WikiEvent(object):
         return None
 
     def get_text_image_link(self):
+        def is_image_link(multi_media_url):
+            return any([multi_media_url.lower().endswith(img_ext) for img_ext in ['gif', 'png', 'jpg', 'jpeg']])
+
         def make_text(dic):
             if dic.keys():
                 return 'Learn more: ' + ', '.join(['''<a href="{}">{}</a>'''
                                                    .format(dic[key]['link'], key) for key in dic])
             else:
                 return self.event.text
+
         result = {}
         for link in self.event.find('a'):
             if 'title' in link.attrs and 'href' in link.attrs and link.attrs['title'] != self.year:
                 result[link.attrs['title']] = {
                     'link': link.absolute_links.pop()}
         self.data['text'] = make_text(result)
-        image_url = self.get_image_from_links(
+        multi_media_url = self.get_image_from_links(
             result, self.event.text, timeout=5)
-        self.data['image_link'] = image_url
+        if multi_media_url:
+            if is_image_link(multi_media_url):
+                self.data['image_link'] = multi_media_url
+            else:
+                self.data['media_link'] = multi_media_url
+        else:
+            self.data['image_link'] = ''
+            self.data['media_link'] = ''
 
 
 class OneWikiDay(object):
@@ -163,9 +169,9 @@ class Wikipedia(object):
             self.logger.info('About to process {} ...'.format(single_link))
             try:
                 w = OneWikiDay(single_link, cached)
-            except:
+            except Exception as exception:
                 self.logger.error(
-                    '*********** Skipped ********* {}'.format(single_link))
+                    '*********** Skipped ********* {} {}'.format(type(exception).__name__, single_link))
                 continue
             self.data[w.date_without_year] = w.data
 
@@ -183,13 +189,14 @@ class Wikipedia(object):
 
     def already_same(self, existing_event, row):
         return existing_event['image_link'] == row['image_link'] \
+            and existing_event['media_link'] == row['media_link'] \
             and existing_event['text'] == row['text']
 
     def map_json_array_to_rows(self, json_array, label_id):
         result = []
         for jsevt in json_array:
-            assert 'date' in jsevt and 'title' in jsevt and 'text' in jsevt and 'image_link' in jsevt
             try:
+                assert 'date' in jsevt and 'title' in jsevt and 'text' in jsevt and 'image_link' in jsevt
                 result.append({
                     'timestamp': jsevt['date'],
                     'title': jsevt['title'],
@@ -197,8 +204,11 @@ class Wikipedia(object):
                     'link': '',
                     'label_id': label_id,
                     'image_link':  jsevt['image_link'] if 'image_link' in jsevt else '',
-                    'media_link':  ''
+                    'media_link':  jsevt['media_link'] if 'media_link' in jsevt else ''
                 })
+            except AssertionError:
+                self.logger.error('This event is not in good shape :(')
+                self.logger.error(jsevt)
             except Exception as exception:
                 self.logger.error('Something unexpected happened: {} {}'.format(
                     type(exception).__name__,

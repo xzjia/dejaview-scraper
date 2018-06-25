@@ -82,13 +82,13 @@ def get_most_recent(label_name):
         bucket_name, prefix=label_name, suffix='json'))
     assert len(objs) > 0
     most_recent_key = max(objs, key=lambda o: o['Key'])['Key']
+    logger.info('Loading Wikipedia cache {} from S3 ...'.format(most_recent_key))
     most_recent_obj = s3.get_object(Bucket=bucket_name, Key=most_recent_key)
     json_obj = json.load(most_recent_obj['Body'])
     return json_obj
 
 
 def collect_wikipedia(s3_bucket, db):
-    logger.info('Loading Wikipedia cache from S3 ...')
     cached = get_most_recent('Wikipedia')
     logger.info('Loading currenet Wikipedia on this day pages ...')
     w = Wikipedia(cached=cached)
@@ -107,4 +107,4 @@ def lambda_handler(event, context):
 
 
 if __name__ == '__main__':
-    lambda_handler({}, None)
+    wikipedia_handler({}, None)
