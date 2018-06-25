@@ -155,8 +155,11 @@ class Wikipedia(object):
         self.all_links = self.get_date_links()
         self.cached = cached
         self.data = {}
-        # Due to the 300 seconds timeout limit on lambda, only 50 days randomly chosen is examined.
-        for single_link in random.sample(self.all_links, 50):
+        # Due to the 300 seconds timeout limit on lambda, not all dates are examined at once
+        sorted_links = sorted(self.all_links)
+        target_links = sorted_links[:len(sorted_links)//2] if datetime.now(
+        ).time().hour < 12 else sorted_links[len(sorted_links)//2:]
+        for single_link in target_links:
             self.logger.info('About to process {} ...'.format(single_link))
             try:
                 w = OneWikiDay(single_link, cached)
@@ -167,6 +170,7 @@ class Wikipedia(object):
             self.data[w.date_without_year] = w.data
 
     def store_json(self):
+        # Only for development
         result = self.merge_cache_and_diff()
         with open("{}.json".format(self.target_date), 'w') as w:
             json.dump(result, w, indent=2)
@@ -208,10 +212,11 @@ class Wikipedia(object):
 
     def store_s3(self, s3_bucket):
         if len(self.data.keys()) > 0:
+            all_events = self.merge_cache_and_diff()
             s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
-                                                     self.target_date)).put(Body=json.dumps(self.merge_cache_and_diff(), indent=2))
+                                                     self.target_date)).put(Body=json.dumps(all_events, indent=2))
             self.logger.info('Successfully stored {} {} events into S3'.format(
-                self.target_date, len(self.data.keys())))
+                self.target_date, len(all_events.keys())))
         else:
             self.logger.warn(
                 '***** No data for {} so skipping... '.format(self.target_date))

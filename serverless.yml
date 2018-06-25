@@ -91,7 +91,7 @@ functions:
       YOUTUBE_API_KEY: ${env:YOUTUBE_API_KEY}
     timeout: 300
     events:
-     - schedule: rate(7 days)
+     - schedule: cron(0 9,21 * * ? *)
 
 
 resources:
