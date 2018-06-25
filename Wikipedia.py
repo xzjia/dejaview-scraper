@@ -226,7 +226,7 @@ class Wikipedia(object):
             s3_bucket.Object(key='{}/{}.json'.format(self.label_name,
                                                      self.target_date)).put(Body=json.dumps(all_events, indent=2))
             self.logger.info('Successfully stored {} {} events into S3'.format(
-                self.target_date, len(all_events.keys())))
+                self.target_date, sum([len(self.data[day]) for day in self.data])))
         else:
             self.logger.warn(
                 '***** No data for {} so skipping... '.format(self.target_date))
