@@ -66,7 +66,7 @@ class NYT(object):
                         'text': jsevt['snippet'],
                         'link': jsevt['web_url'],
                         'label_id': label_id,
-                        'image_link': 'https://www.nytimes.com/' + next(filter(lambda e: e['subtype'] == 'thumbnail', jsevt['multimedia']))['url'],
+                        'image_link': 'https://www.nytimes.com/' + next(filter(lambda e: e['subtype'] in ['xlarge', 'wide'], jsevt['multimedia']))['url'],
                         'media_link': ''
                     })
             except Exception as exception:
