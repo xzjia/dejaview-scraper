@@ -66,7 +66,7 @@ def collect_billboard(s3_bucket, db):
 
 def collect_movies(s3_bucket, db):
     logger.info('Collecting Movies ...')
-    m = Movies(date(2018, 6, 15))
+    m = Movies()
     if m.events:
         m.store_rds(db)
         m.store_s3(s3_bucket)
