@@ -9,6 +9,7 @@
   "author": "Xiaozhou Jia",
   "license": "MIT",
   "dependencies": {
+    "serverless": "^1.28.0",
     "serverless-python-requirements": "^4.1.0"
   }
 }
